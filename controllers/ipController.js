@@ -1,33 +1,84 @@
 const axios = require('axios');
 const IPAnalysis = require('../models/IPanalysis');
 
-// analyze an IP — calls AbuseIPDB, saves to DB, returns result
+//promis.all now calls both ip-api and abuseipdb
 const analyzeIP = async (req, res) => {
   try {
     const ip = req.params.ip;
 
     // call AbuseIPDB
-    const response = await axios.get('https://api.abuseipdb.com/api/v2/check', {
-      headers: {
+    // const response = await axios.get('https://api.abuseipdb.com/api/v2/check', {
+    //   headers: {
+    //     'Key': process.env.ABUSEIPDB_API_KEY,
+    //     'Accept': 'application/json'
+    //   },
+    //   params: {
+    //     ipAddress: ip,
+    //     maxAgeInDays: 90
+    //   }
+    // });
+
+    //call Abuseipdb and ip-api fr geolocation
+    
+    //caching from mongoDB
+    // check if we already have recent data for this IP
+    const existing = await IPAnalysis.findOne({ 
+      ipAddress: ip,
+      analyzedAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // within last 1 hour
+    });
+
+    if (existing) {
+      return res.status(200).json(existing); // return cached data, no API call needed
+    }
+    
+    const [abuseResponse , geoResponse] = await Promise.all([
+      axios.get('https://api.abuseipdb.com/api/v2/check', {
+        headers: {
         'Key': process.env.ABUSEIPDB_API_KEY,
         'Accept': 'application/json'
-      },
-      params: {
+        },
+        params: {
         ipAddress: ip,
         maxAgeInDays: 90
-      }
-    });
+        }
+      }),
+      axios.get(`http://ip-api.com/json/${ip}` , {
+         params: {
+          fields: 'status,message,country,countryCode,region,regionName,city,district,zip,lat,lon,timezone,isp,org,as,proxy,query'
+        }
+      }) 
 
-    const data = response.data.data;
+    ]);
 
-    // save result to MongoDB
-    const saved = await IPAnalysis.create({
-      ipAddress: data.ipAddress,
-      abuseScore: data.abuseConfidenceScore,
-      country: data.countryCode,
-      isp: data.isp,
-      totalReports: data.totalReports
-    });
+
+    // extract data from both responses
+    const abuseData = abuseResponse.data.data;
+    const geoData = geoResponse.data;
+
+    //save to mongoDB
+     const result = {
+      // from AbuseIPDB
+      ipAddress: abuseData.ipAddress,
+      abuseScore: abuseData.abuseConfidenceScore,
+      totalReports: abuseData.totalReports,
+      isp: abuseData.isp,
+      // from ip-api
+      country: geoData.country,
+      countryCode: geoData.countryCode,
+      region: geoData.region,
+      regionName: geoData.regionName,
+      city: geoData.city,
+      district: geoData.district,
+      zip: geoData.zip,
+      lat: geoData.lat,
+      lon: geoData.lon,
+      timezone: geoData.timezone,
+      org: geoData.org,
+      as: geoData.as,
+      isProxy: geoData.proxy
+    };
+    
+    const saved = await IPAnalysis.create(result);
 
     // send back to frontend
     res.status(200).json(saved);
