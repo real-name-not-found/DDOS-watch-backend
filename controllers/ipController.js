@@ -19,6 +19,18 @@ const analyzeIP = async (req, res) => {
     // });
 
     //call Abuseipdb and ip-api fr geolocation
+    
+    //caching from mongoDB
+    // check if we already have recent data for this IP
+    const existing = await IPAnalysis.findOne({ 
+      ipAddress: ip,
+      analyzedAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // within last 1 hour
+    });
+
+    if (existing) {
+      return res.status(200).json(existing); // return cached data, no API call needed
+    }
+    
     const [abuseResponse , geoResponse] = await Promise.all([
       axios.get('https://api.abuseipdb.com/api/v2/check', {
         headers: {
