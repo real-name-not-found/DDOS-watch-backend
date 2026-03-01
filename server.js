@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/analyze-ip', require('./routes/ipRoutes'));
+app.use('/api/global', require('./routes/globalRoutes'));
 
 app.get('/' , (req,res) => {
     // console.log("server is running ");
