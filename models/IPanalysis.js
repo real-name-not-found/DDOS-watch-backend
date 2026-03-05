@@ -23,7 +23,10 @@ const ipAnalysisSchema = new mongoose.Schema({
   lastReportedAt: { type: String, default: null },
   isTor: { type: Boolean, default: false },
   domain: { type: String, default: '' },
-  hostnames: { type: [String], default: [] }
+  hostnames: { type: [String], default: [] },
+  numDistinctUsers: { type: Number, default: 0 },
+  ipVersion: { type: Number, default: 4 },
+  isWhitelisted: { type: Boolean, default: false },
 });
 
 const IPAnalysis = mongoose.model('IPAnalysis', ipAnalysisSchema);
