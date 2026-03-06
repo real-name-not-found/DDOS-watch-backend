@@ -30,4 +30,8 @@ const ipAnalysisSchema = new mongoose.Schema({
 });
 
 const IPAnalysis = mongoose.model('IPAnalysis', ipAnalysisSchema);
+
+//Mongodb index xompound
+ipAnalysisSchema.index({ ipAddress: 1, analyzedAt: -1 });
+
 module.exports = IPAnalysis;

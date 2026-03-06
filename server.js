@@ -12,7 +12,9 @@ const app = express();
 
 app.use(helmet());
 app.use(morgan('dev'));
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173'
+}));
 app.use(express.json());
 
 // rate limiting after cors
@@ -38,12 +40,12 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch((err) => console.error('MongoDB connection failed:', err.message));
 
 
-  app.use((err, req , res , next) => {
-    console.error('Unahndeled error: ' , err.stack);
-    res.status(err.status || 500).json({
-      error: err.message || "Something went crazy"
-    });
+app.use((err, req, res, next) => {
+  console.error('Unahndeled error: ', err.stack);
+  res.status(err.status || 500).json({
+    error: err.message || "Something went crazy"
   });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
