@@ -30,7 +30,7 @@ const getGlobalDDoS = async (req, res) => {
   }
 
   try {
-    const [timeseriesRes, originsRes, targetsRes, protocolRes, vectorRes] = await Promise.all([
+    const [timeseriesRes, originsRes, targetsRes, protocolRes, vectorRes, bitrateRes, durationRes] = await Promise.all([
       axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/timeseries', {
         headers: cfHeaders,
         params: {
@@ -69,8 +69,21 @@ const getGlobalDDoS = async (req, res) => {
           format: 'json'
         }
       }),
+      axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/summary/bitrate', {
+        headers: cfHeaders,
+        params: {
+          dateRange: period,
+          format: 'json'
+        }
+      }),
+      axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/summary/duration', {
+        headers: cfHeaders,
+        params: {
+          dateRange: period,
+          format: 'json'
+        }
+      })
     ]);
-
     // console.log('Cloudflare timeseries:', JSON.stringify(timeseriesRes.data.result, null, 2));
     // console.log('Cloudflare origins:', JSON.stringify(originsRes.data.result.top_0, null, 2));
     // console.log('Cloudflare targets:', JSON.stringify(targetsRes.data.result.top_0, null, 2));
@@ -79,6 +92,8 @@ const getGlobalDDoS = async (req, res) => {
       timeseries: timeseriesRes.data.result,
       topOrigins: originsRes.data.result.top_0,
       topTargets: targetsRes.data.result.top_0,
+      bitrate: bitrateRes.data.result.summary_0,
+      duration: durationRes.data.result.summary_0,
       period: period,
       protocol: protocolRes.data.result.summary_0,
       vector: vectorRes.data.result.summary_0,
