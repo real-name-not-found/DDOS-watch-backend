@@ -43,7 +43,7 @@ const getGlobalDDoS = async (req, res) => {
         headers: cfHeaders,
         params: {
           dateRange: period,
-          limit: 200,
+          limit: 100,
           format: 'json'
         }
       }),
@@ -53,7 +53,7 @@ const getGlobalDDoS = async (req, res) => {
         headers: cfHeaders,
         params: {
           dateRange: period,
-          limit: 200,
+          limit: 100,
           format: 'json'
         }
       }),
@@ -90,7 +90,7 @@ const getGlobalDDoS = async (req, res) => {
         headers: cfHeaders,
         params: {
           dateRange: period,
-          limit: 200,
+          limit: 100,
           format: 'json'
         }
       })
