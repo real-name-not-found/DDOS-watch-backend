@@ -29,9 +29,9 @@ const ipAnalysisSchema = new mongoose.Schema({
   isWhitelisted: { type: Boolean, default: false },
 });
 
-const IPAnalysis = mongoose.model('IPAnalysis', ipAnalysisSchema);
-
-//Mongodb index xompound
+//Mongodb compound index — must be defined BEFORE mongoose.model()
 ipAnalysisSchema.index({ ipAddress: 1, analyzedAt: -1 });
+
+const IPAnalysis = mongoose.model('IPAnalysis', ipAnalysisSchema);
 
 module.exports = IPAnalysis;
