@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
-
+// Base middleware for security headers, request logging, CORS, and JSON parsing.
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(cors({
@@ -17,7 +17,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// rate limiting after cors
+// Rate limiting is applied only to API routes so the app is less vulnerable to spam traffic.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -25,21 +25,26 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// routes
+// Main API route groups.
 app.use('/api/analyze-ip', require('./routes/ipRoutes'));
 app.use('/api/global', require('./routes/globalRoutes'));
 
-// test route
+// Simple root route for quick smoke checks.
 app.get('/', (req, res) => {
   res.json({ message: 'Server is running' });
 });
 
-// database
+// Dedicated backend health route for local checks and later Render monitoring.
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'ddos-watch-backend' });
+});
+
+// Connect once on startup so the analyzer can cache and read IP history from MongoDB.
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch((err) => console.error('MongoDB connection failed:', err.message));
 
-
+// Final catch-all error handler for any uncaught Express errors.
 app.use((err, req, res, next) => {
   console.error('Unahndeled error: ', err.stack);
   res.status(err.status || 500).json({

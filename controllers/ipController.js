@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { isIP } = require('node:net');
 const IPAnalysis = require('../models/IPanalysis');
 
 // retry logics crazyy - retry 1 time with 10 sec timeout 
@@ -13,23 +14,9 @@ const retryRequest = async (fn, retries = 1, delayMs = 2000) => {
     }
   }
 };
-// ip Validation carzyy
-const isValidIPv4 = (ip) => {
-  const parts = ip.split('.');
-  if (parts.length !== 4) return false;
-  return parts.every(part => {
-    const num = Number(part);
-    return /^\d{1,3}$/.test(part) && num >= 0 && num <= 255;
-  });
-};
-
-const isValidIPv6 = (ip) => {
-  // Supports full and compressed forms (::1, 2001:db8::1, etc.)
-  const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-  // also match full 8-group form
-  const ipv6Full = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-  return ipv6Regex.test(ip) || ipv6Full.test(ip);
-};
+const ipVersion = (ip) => isIP(ip);
+const isValidIPv4 = (ip) => ipVersion(ip) === 4;
+const isValidIPv6 = (ip) => ipVersion(ip) === 6;
 
 const isPrivateIP = (ip) => {
   const parts = ip.split('.').map(Number);
@@ -47,7 +34,7 @@ const analyzeIP = async (req, res) => {
     const ip = req.params.ip.trim();
 
     // S1 FIX: Validate IP before sending to ANY external API
-    if (!isValidIPv4(ip) && !isValidIPv6(ip)) {
+    if (ipVersion(ip) === 0) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
 

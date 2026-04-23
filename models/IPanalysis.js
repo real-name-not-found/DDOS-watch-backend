@@ -27,6 +27,16 @@ const ipAnalysisSchema = new mongoose.Schema({
   numDistinctUsers: { type: Number, default: 0 },
   ipVersion: { type: Number, default: 4 },
   isWhitelisted: { type: Boolean, default: false },
+  mlMaliciousProbability: { type: Number, default: null },
+  mlRiskBand: { type: String, default: '' },
+  mlLowRiskThreshold: { type: Number, default: null },
+  mlHighRiskThreshold: { type: Number, default: null },
+  mlMiddleBandLabel: { type: String, default: '' },
+  mlProviderStatus: { type: mongoose.Schema.Types.Mixed, default: {} },
+  mlDisplayContext: { type: mongoose.Schema.Types.Mixed, default: {} },
+  finalRiskScore: { type: Number, default: 0 },
+  finalRiskLabel: { type: String, default: '' },
+  finalRecommendation: { type: String, default: '' },
 });
 
 //Mongodb compound index — must be defined BEFORE mongoose.model()

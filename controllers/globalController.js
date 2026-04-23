@@ -9,12 +9,25 @@ const cache = {};
 
 const ONE_HOUR = 60 * 60 * 1000;
 
-const cfHeaders = {
-  'Authorization': `Bearer ${process.env.CLOUDFLARE_RADAR_TOKEN}`,
-  'Content-Type': 'application/json'
-};
+const fallbackTimeseries = () => ({
+  serie_0: {
+    timestamps: [],
+    values: []
+  },
+  meta: {
+    dateRange: []
+  }
+});
+
+const settledData = (result, mapper, fallbackValue) => (
+  result.status === 'fulfilled' ? mapper(result.value) : fallbackValue
+);
 
 const getGlobalDDoS = async (req, res) => {
+  const cfHeaders = {
+    'Authorization': `Bearer ${process.env.CLOUDFLARE_RADAR_TOKEN}`,
+    'Content-Type': 'application/json'
+  };
 
   const period = req.query.period || '7d';
 
@@ -30,7 +43,7 @@ const getGlobalDDoS = async (req, res) => {
   }
 
   try {
-    const [timeseriesRes, originsRes, targetsRes, protocolRes, vectorRes, bitrateRes, durationRes, attackPairsRes] = await Promise.all([
+    const settledResponses = await Promise.allSettled([
       axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/timeseries', {
         headers: cfHeaders,
         params: {
@@ -96,16 +109,34 @@ const getGlobalDDoS = async (req, res) => {
       })
     ]);
 
+    const failedCount = settledResponses.filter((result) => result.status === 'rejected').length;
+
+    if (failedCount === settledResponses.length) {
+      throw new Error('Cloudflare Radar is temporarily unavailable');
+    }
+
+    const [
+      timeseriesRes,
+      originsRes,
+      targetsRes,
+      protocolRes,
+      vectorRes,
+      bitrateRes,
+      durationRes,
+      attackPairsRes
+    ] = settledResponses;
+
     const result = {
-      timeseries: timeseriesRes.data.result,
-      topOrigins: originsRes.data.result.top_0,
-      topTargets: targetsRes.data.result.top_0,
-      attackPairs: attackPairsRes.data.result?.top_0 || [],
-      bitrate: bitrateRes.data.result.summary_0,
-      duration: durationRes.data.result.summary_0,
+      timeseries: settledData(timeseriesRes, (response) => response.data.result, fallbackTimeseries()),
+      topOrigins: settledData(originsRes, (response) => response.data.result?.top_0 || [], []),
+      topTargets: settledData(targetsRes, (response) => response.data.result?.top_0 || [], []),
+      attackPairs: settledData(attackPairsRes, (response) => response.data.result?.top_0 || [], []),
+      bitrate: settledData(bitrateRes, (response) => response.data.result?.summary_0 || {}, {}),
+      duration: settledData(durationRes, (response) => response.data.result?.summary_0 || {}, {}),
       period: period,
-      protocol: protocolRes.data.result.summary_0,
-      vector: vectorRes.data.result.summary_0,
+      protocol: settledData(protocolRes, (response) => response.data.result?.summary_0 || {}, {}),
+      vector: settledData(vectorRes, (response) => response.data.result?.summary_0 || {}, {}),
+      partialFailures: failedCount,
       fetchedAt: new Date().toISOString()
     };
     // cachedData = result;
